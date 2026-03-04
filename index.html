@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Loan Calculator Pro</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#6366f1"/>
+<meta name="description" content="Offline Loan Calculator – Flat Rate & Reducing Balance with Down Payment"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f172a;--surface:#1e293b;--surface2:#273549;--surface3:#1a2540;
+  --border:#334155;--primary:#6366f1;--pl:#818cf8;--accent:#10b981;
+  --danger:#f43f5e;--warn:#f59e0b;--text:#f1f5f9;--muted:#94a3b8;
+  --dp:#f59e0b;--radius:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+
+/* ── HEADER ── */
+header{background:linear-gradient(135deg,#1e1b4b,#1e293b);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.logo{width:40px;height:40px;background:linear-gradient(135deg,var(--primary),#8b5cf6);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+header h1{font-size:1.15rem;font-weight:700}
+header small{color:var(--muted);font-size:.73rem}
+.badge-offline{margin-left:auto;background:var(--accent);color:#fff;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600;white-space:nowrap}
+
+/* ── NAV ── */
+nav{display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:none;padding:13px 18px;background:none;border:none;color:var(--muted);font-size:.83rem;font-weight:500;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;transition:all .2s}
+nav button.active{color:var(--pl);border-bottom-color:var(--primary)}
+nav button:hover:not(.active){color:var(--text)}
+
+/* ── LAYOUT ── */
+main{max-width:960px;margin:0 auto;padding:20px}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:18px}
+.card-title{font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pl);margin-bottom:16px;display:flex;align-items:center;gap:6px}
+
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.field label{display:flex;align-items:center;gap:5px;font-size:.78rem;color:var(--muted);margin-bottom:6px;font-weight:500}
+.field input,.field select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 13px;color:var(--text);font-size:.93rem;outline:none;transition:border-color .2s}
+.field input:focus,.field select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.field .hint{font-size:.7rem;color:var(--muted);margin-top:4px}
+
+/* ── DOWN PAYMENT SECTION ── */
+.dp-section{background:linear-gradient(135deg,rgba(245,158,11,.06),rgba(245,158,11,.02));border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:16px;margin-top:4px}
+.dp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.dp-header span{font-size:.78rem;font-weight:600;color:var(--dp)}
+.dp-pills{display:flex;gap:6px;flex-wrap:wrap}
+.dp-pill{padding:4px 10px;border-radius:20px;border:1px solid rgba(245,158,11,.3);background:transparent;color:var(--muted);font-size:.72rem;cursor:pointer;transition:all .2s}
+.dp-pill:hover,.dp-pill.active{background:rgba(245,158,11,.2);border-color:var(--dp);color:var(--dp)}
+.dp-summary{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+.dp-stat{background:rgba(245,158,11,.1);border-radius:8px;padding:8px 14px;text-align:center;flex:1;min-width:100px}
+.dp-stat .dl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.dp-stat .dv{font-size:.95rem;font-weight:700;color:var(--dp)}
+
+/* ── SLIDER ── */
+.slider-wrap{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.slider-wrap input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:var(--border);border-radius:4px;border:none;padding:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:var(--primary);border-radius:50%;cursor:pointer;box-shadow:0 0 0 3px rgba(99,102,241,.2)}
+.sv{font-size:.83rem;color:var(--pl);font-weight:700;min-width:55px;text-align:right}
+
+/* ── BUTTONS ── */
+.btn{padding:11px 26px;border-radius:8px;border:none;font-size:.93rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:linear-gradient(135deg,var(--primary),#8b5cf6);color:#fff}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-outline:hover{border-color:var(--primary);color:var(--pl)}
+.btn-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+
+/* ── RESULTS GRID ── */
+.res-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:18px}
+.res-item{background:var(--surface2);border-radius:10px;padding:14px;text-align:center;border:1px solid var(--border)}
+.res-item .rl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.res-item .rv{font-size:1.2rem;font-weight:700}
+.rv.c-pri{color:var(--pl)} .rv.c-acc{color:var(--accent)} .rv.c-dan{color:var(--danger)} .rv.c-warn{color:var(--warn)} .rv.c-dp{color:var(--dp)}
+
+/* ── DOWN PAYMENT RESULT BANNER ── */
+.dp-result-bar{background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(245,158,11,.04));border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.dpb-item .dl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.dpb-item .dv{font-size:1.05rem;font-weight:700;color:var(--dp)}
+
+/* ── CHART ── */
+.chart-wrap{position:relative;height:280px}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.81rem}
+thead th{background:var(--surface2);padding:10px 12px;text-align:right;color:var(--muted);font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+thead th:first-child{text-align:center}
+tbody td{padding:8px 12px;text-align:right;border-top:1px solid var(--border)}
+tbody td:first-child{text-align:center;color:var(--muted)}
+tbody tr:hover{background:var(--surface2)}
+tbody tr.yr-row{background:rgba(99,102,241,.08)}
+.td-p{color:var(--accent)} .td-i{color:var(--danger)} .td-b{color:var(--pl)}
+.tot-row td{background:var(--surface2);font-weight:700;border-top:2px solid var(--border)!important}
+
+/* ── COMPARISON CARDS ── */
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:600px){.cmp-grid{grid-template-columns:1fr}}
+.cmp-card{border-radius:10px;padding:18px;border:2px solid var(--border)}
+.cmp-card.flat{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.05)}
+.cmp-card.red{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.05)}
+.cmp-card h3{font-size:.88rem;font-weight:700;margin-bottom:12px}
+.cmp-card.flat h3{color:var(--pl)} .cmp-card.red h3{color:var(--accent)}
+.cmp-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:.81rem}
+.cmp-row:last-child{border-bottom:none}
+.cmp-row .cl{color:var(--muted)} .cmp-row .cv{font-weight:600}
+
+/* ── SAVINGS BANNER ── */
+.save-banner{background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.04));border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:14px 18px;margin-top:14px;display:flex;align-items:flex-start;gap:12px}
+.save-banner .icon{font-size:1.8rem;flex-shrink:0}
+.save-banner h4{color:var(--accent);font-size:.95rem}
+.save-banner p{color:var(--muted);font-size:.8rem;margin-top:3px}
+
+/* ── INFO BOX ── */
+.info-box{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:11px 15px;font-size:.8rem;color:var(--muted);margin-bottom:14px}
+.info-box strong{color:var(--pl)}
+
+/* ── LEGEND ── */
+.legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:.78rem;color:var(--muted)}
+.leg-dot{width:12px;height:12px;border-radius:3px}
+
+/* ── INSTALL BANNER ── */
+#inst-banner{display:none;background:linear-gradient(135deg,var(--primary),#8b5cf6);padding:11px 18px;align-items:center;gap:12px}
+#inst-banner.show{display:flex}
+#inst-banner p{flex:1;font-size:.83rem}
+#inst-banner .ib{padding:7px 14px;border-radius:6px;background:#fff;color:var(--primary);border:none;font-weight:600;cursor:pointer;font-size:.81rem}
+#inst-banner .ic{background:transparent;border:none;color:#fff;cursor:pointer;font-size:1.1rem}
+
+/* ── UTILS ── */
+.hidden{display:none!important}
+.mt-3{margin-top:12px} .mt-4{margin-top:16px}
+@media(max-width:500px){
+  header h1{font-size:1rem}
+  .btn{padding:10px 16px;font-size:.85rem}
+  .res-grid{grid-template-columns:1fr 1fr}
+}
+
+/* ── SECTION DIVIDER ── */
+.sec-divider{display:flex;align-items:center;gap:10px;margin:18px 0 14px;color:var(--muted);font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.sec-divider::before,.sec-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── TOGGLE SWITCH ── */
+.toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.toggle-label{font-size:.82rem;color:var(--muted);font-weight:500}
+.toggle{position:relative;width:42px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:24px;cursor:pointer;transition:.3s}
+.toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.toggle input:checked + .toggle-slider{background:var(--dp)}
+.toggle input:checked + .toggle-slider::before{transform:translateX(18px)}
+
+/* ── LTV METER ── */
+.ltv-bar-wrap{margin-top:10px}
+.ltv-bar-track{height:8px;background:var(--border);border-radius:8px;overflow:hidden}
+.ltv-bar-fill{height:100%;border-radius:8px;transition:width .4s;background:linear-gradient(90deg,var(--accent),var(--warn))}
+.ltv-labels{display:flex;justify-content:space-between;font-size:.68rem;color:var(--muted);margin-top:4px}
+</style>
+</head>
+<body>
+
+<!-- Install Banner -->
+<div id="inst-banner">
+  <span>📲</span>
+  <p>Install Loan Calculator Pro for offline access!</p>
+  <button class="ib" id="inst-btn">Install App</button>
+  <button class="ic" onclick="document.getElementById('inst-banner').classList.remove('show')">✕</button>
+</div>
+
+<header>
+  <div class="logo">💰</div>
+  <div><h1>Loan Calculator Pro</h1><small>Flat · Reducing · Down Payment · Compare</small></div>
+  <span class="badge-offline">✓ Offline</span>
+</header>
+
+<nav>
+  <button class="active" onclick="switchTab('flat',this)">📊 Flat Rate</button>
+  <button onclick="switchTab('reducing',this)">📉 Reducing</button>
+  <button onclick="switchTab('compare',this)">⚖️ Compare</button>
+  <button onclick="switchTab('amort',this)">📋 Schedule</button>
+  <button onclick="switchTab('guide',this)">📖 Guide</button>
+</nav>
+
+<main>
+
+<!-- ══════════════════════════════════════════
+     TAB 1 · FLAT RATE
+══════════════════════════════════════════ -->
+<div id="tab-flat" class="tab-panel active">
+  <div class="info-box">
+    <strong>Flat Rate Loan:</strong> Interest is always calculated on the <strong>original principal</strong> — not the reducing balance. EMI stays constant throughout.
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏷️ Asset & Loan Details</div>
+
+    <!-- Down Payment Toggle -->
+    <div class="toggle-row">
+      <label class="toggle"><input type="checkbox" id="f-dp-toggle" onchange="toggleDP('f'); syncFlat()"><span class="toggle-slider"></span></label>
+      <span class="toggle-label">Include Down Payment</span>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>💵 Asset / Property Price (₹)</label>
+        <input type="number" id="f-price" value="1000000" min="0" oninput="autoDP('f'); syncFlat()"/>
+        <div class="hint">Total cost of asset (vehicle, property, etc.)</div>
+      </div>
+      <div class="field" id="f-dp-field" style="display:none">
+        <label>⬇️ Down Payment (₹)</label>
+        <input type="number" id="f-dp-amt" value="200000" min="0" oninput="onDPAmtChange('f'); syncFlat()"/>
+        <div class="hint">Upfront amount you pay</div>
+      </div>
+      <div class="field" id="f-dp-pct-field" style="display:none">
+        <label>% of Price</label>
+        <div class="slider-wrap">
+          <input type="range" id="f-dp-pct-s" min="0" max="90" step="1" value="20" oninput="onDPPctChange('f'); syncFlat()">
+          <span class="sv" id="f-dp-pct-disp">20%</span>
+        </div>
+        <input type="number" id="f-dp-pct" value="20" min="0" max="100" step="1" oninput="onDPPctInput('f'); syncFlat()"/>
+      </div>
+      <div class="field">
+        <label>🏦 Loan Amount (₹)</label>
+        <input type="number" id="f-amount" value="1000000" min="1000" oninput="syncFlat()"/>
+        <div class="hint">Principal borrowed</div>
+      </div>
+      <div class="field">
+        <label>📈 Annual Interest Rate (%)</label>
+        <div class="slider-wrap">
+          <input type="range" id="f-rate-s" min="1" max="36" step="0.1" value="12" oninput="document.getElementById('f-rate').value=this.value;document.getElementById('f-rate-disp').textContent=this.value+'%';syncFlat()">
+          <span class="sv" id="f-rate-disp">12%</span>
+        </div>
+        <input type="number" id="f-rate" value="12" step="0.1" min="0.1" oninput="document.getElementById('f-rate-s').value=this.value;document.getElementById('f-rate-disp').textContent=this.value+'%';syncFlat()"/>
+      </div>
+      <div class="field">
+        <label>📅 Loan Tenure (Months)</label>
+        <div class="slider-wrap">
+          <input type="range" id="f-ten-s" min="1" max="360" value="60" oninput="document.getElementById('f-ten').value=this.value;document.getElementById('f-ten-disp').textContent=this.value;syncFlat()">
+          <span class="sv" id="f-ten-disp">60</span>
+        </div>
+        <input type="number" id="f-ten" value="60" min="1" max="360" oninput="document.getElementById('f-ten-s').value=this.value;document.getElementById('f-ten-disp').textContent=this.value;syncFlat()"/>
+      </div>
+    </div>
+
+    <!-- Down Payment summary inside card -->
+    <div id="f-dp-summary" style="display:none" class="dp-section mt-3">
+      <div class="dp-header">
+        <span>⬇️ Down Payment Breakdown</span>
+        <div class="dp-pills">
+          <button class="dp-pill" onclick="setDPPct('f',5)">5%</button>
+          <button class="dp-pill" onclick="setDPPct('f',10)">10%</button>
+          <button class="dp-pill" onclick="setDPPct('f',20)">20%</button>
+          <button class="dp-pill" onclick="setDPPct('f',25)">25%</button>
+          <button class="dp-pill" onclick="setDPPct('f',30)">30%</button>
+          <button class="dp-pill" onclick="setDPPct('f',50)">50%</button>
+        </div>
+      </div>
+      <div class="dp-summary">
+        <div class="dp-stat"><div class="dl">Asset Price</div><div class="dv" id="f-s-price">—</div></div>
+        <div class="dp-stat"><div class="dl">Down Payment</div><div class="dv" id="f-s-dp">—</div></div>
+        <div class="dp-stat"><div class="dl">Loan Amount</div><div class="dv" id="f-s-loan">—</div></div>
+        <div class="dp-stat"><div class="dl">LTV Ratio</div><div class="dv" id="f-s-ltv">—</div></div>
+      </div>
+      <div class="ltv-bar-wrap">
+        <div class="ltv-bar-track"><div class="ltv-bar-fill" id="f-ltv-bar" style="width:80%"></div></div>
+        <div class="ltv-labels"><span>0% LTV</span><span>Ideal ≤ 80%</span><span>100%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="f-results" class="hidden">
+    <!-- Down Payment Result Bar (only when DP enabled) -->
+    <div id="f-dp-res-bar" class="dp-result-bar hidden">
+      <div class="dpb-item"><div class="dl">Asset Price</div><div class="dv" id="f-r-price">—</div></div>
+      <div class="dpb-item"><div class="dl">Down Payment</div><div class="dv" id="f-r-dp">—</div></div>
+      <div class="dpb-item"><div class="dl">Loan Amount</div><div class="dv" id="f-r-loan">—</div></div>
+      <div class="dpb-item"><div class="dl">LTV Ratio</div><div class="dv" id="f-r-ltv">—</div></div>
+      <div class="dpb-item"><div class="dl">Total Cost (DP+Loan)</div><div class="dv" id="f-r-total-cost">—</div></div>
+    </div>
+
+    <div class="res-grid">
+      <div class="res-item"><div class="rl">Monthly EMI</div><div class="rv c-pri" id="f-emi">—</div></div>
+      <div class="res-item"><div class="rl">Total Interest</div><div class="rv c-dan" id="f-tint">—</div></div>
+      <div class="res-item"><div class="rl">Total Payment</div><div class="rv c-warn" id="f-tpay">—</div></div>
+      <div class="res-item"><div class="rl">Effective APR</div><div class="rv c-acc" id="f-apr">—</div></div>
+      <div class="res-item"><div class="rl">Monthly Interest</div><div class="rv" id="f-mint">—</div></div>
+      <div class="res-item"><div class="rl">Monthly Principal</div><div class="rv" id="f-mprin">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📊 Payment Breakdown</div>
+      <div class="chart-wrap"><canvas id="f-chart"></canvas></div>
+      <div class="legend" id="f-legend">
+        <div class="leg-item"><div class="leg-dot" style="background:#f59e0b"></div>Down Payment</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#6366f1"></div>Principal</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#f43f5e"></div>Total Interest</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 2 · REDUCING BALANCE
+══════════════════════════════════════════ -->
+<div id="tab-reducing" class="tab-panel">
+  <div class="info-box">
+    <strong>Reducing Balance Loan:</strong> Interest calculated on outstanding balance each month. As principal reduces, so does the interest — making it cheaper than flat rate.
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏷️ Asset & Loan Details</div>
+
+    <div class="toggle-row">
+      <label class="toggle"><input type="checkbox" id="r-dp-toggle" onchange="toggleDP('r'); syncReducing()"><span class="toggle-slider"></span></label>
+      <span class="toggle-label">Include Down Payment</span>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>💵 Asset / Property Price (₹)</label>
+        <input type="number" id="r-price" value="1000000" oninput="autoDP('r'); syncReducing()"/>
+        <div class="hint">Total cost of asset</div>
+      </div>
+      <div class="field" id="r-dp-field" style="display:none">
+        <label>⬇️ Down Payment (₹)</label>
+        <input type="number" id="r-dp-amt" value="200000" oninput="onDPAmtChange('r'); syncReducing()"/>
+      </div>
+      <div class="field" id="r-dp-pct-field" style="display:none">
+        <label>% of Price</label>
+        <div class="slider-wrap">
+          <input type="range" id="r-dp-pct-s" min="0" max="90" step="1" value="20" oninput="onDPPctChange('r'); syncReducing()">
+          <span class="sv" id="r-dp-pct-disp">20%</span>
+        </div>
+        <input type="number" id="r-dp-pct" value="20" min="0" max="100" step="1" oninput="onDPPctInput('r'); syncReducing()"/>
+      </div>
+      <div class="field">
+        <label>🏦 Loan Amount (₹)</label>
+        <input type="number" id="r-amount" value="1000000" oninput="syncReducing()"/>
+      </div>
+      <div class="field">
+        <label>📈 Annual Interest Rate (%)</label>
+        <div class="slider-wrap">
+          <input type="range" id="r-rate-s" min="1" max="36" step="0.1" value="12" oninput="document.getElementById('r-rate').value=this.value;document.getElementById('r-rate-disp').textContent=this.value+'%';syncReducing()">
+          <span class="sv" id="r-rate-disp">12%</span>
+        </div>
+        <input type="number" id="r-rate" value="12" step="0.1" oninput="document.getElementById('r-rate-s').value=this.value;document.getElementById('r-rate-disp').textContent=this.value+'%';syncReducing()"/>
+      </div>
+      <div class="field">
+        <label>📅 Loan Tenure (Months)</label>
+        <div class="slider-wrap">
+          <input type="range" id="r-ten-s" min="1" max="360" value="60" oninput="document.getElementById('r-ten').value=this.value;document.getElementById('r-ten-disp').textContent=this.value;syncReducing()">
+          <span class="sv" id="r-ten-disp">60</span>
+        </div>
+        <input type="number" id="r-ten" value="60" min="1" max="360" oninput="document.getElementById('r-ten-s').value=this.value;document.getElementById('r-ten-disp').textContent=this.value;syncReducing()"/>
+      </div>
+    </div>
+
+    <div id="r-dp-summary" style="display:none" class="dp-section mt-3">
+      <div class="dp-header">
+        <span>⬇️ Down Payment Breakdown</span>
+        <div class="dp-pills">
+          <button class="dp-pill" onclick="setDPPct('r',5)">5%</button>
+          <button class="dp-pill" onclick="setDPPct('r',10)">10%</button>
+          <button class="dp-pill" onclick="setDPPct('r',20)">20%</button>
+          <button class="dp-pill" onclick="setDPPct('r',25)">25%</button>
+          <button class="dp-pill" onclick="setDPPct('r',30)">30%</button>
+          <button class="dp-pill" onclick="setDPPct('r',50)">50%</button>
+        </div>
+      </div>
+      <div class="dp-summary">
+        <div class="dp-stat"><div class="dl">Asset Price</div><div class="dv" id="r-s-price">—</div></div>
+        <div class="dp-stat"><div class="dl">Down Payment</div><div class="dv" id="r-s-dp">—</div></div>
+        <div class="dp-stat"><div class="dl">Loan Amount</div><div class="dv" id="r-s-loan">—</div></div>
+        <div class="dp-stat"><div class="dl">LTV Ratio</div><div class="dv" id="r-s-ltv">—</div></div>
+      </div>
+      <div class="ltv-bar-wrap">
+        <div class="ltv-bar-track"><div class="ltv-bar-fill" id="r-ltv-bar" style="width:80%"></div></div>
+        <div class="ltv-labels"><span>0% LTV</span><span>Ideal ≤ 80%</span><span>100%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="r-results" class="hidden">
+    <div id="r-dp-res-bar" class="dp-result-bar hidden">
+      <div class="dpb-item"><div class="dl">Asset Price</div><div class="dv" id="r-r-price">—</div></div>
+      <div class="dpb-item"><div class="dl">Down Payment</div><div class="dv" id="r-r-dp">—</div></div>
+      <div class="dpb-item"><div class="dl">Loan Amount</div><div class="dv" id="r-r-loan">—</div></div>
+      <div class="dpb-item"><div class="dl">LTV Ratio</div><div class="dv" id="r-r-ltv">—</div></div>
+      <div class="dpb-item"><div class="dl">Total Cost (DP+Loan)</div><div class="dv" id="r-r-total-cost">—</div></div>
+    </div>
+
+    <div class="res-grid">
+      <div class="res-item"><div class="rl">Monthly EMI</div><div class="rv c-pri" id="r-emi">—</div></div>
+      <div class="res-item"><div class="rl">Total Interest</div><div class="rv c-dan" id="r-tint">—</div></div>
+      <div class="res-item"><div class="rl">Total Payment</div><div class="rv c-warn" id="r-tpay">—</div></div>
+      <div class="res-item"><div class="rl">1st Month Interest</div><div class="rv" id="r-fint">—</div></div>
+      <div class="res-item"><div class="rl">Last Month Interest</div><div class="rv c-acc" id="r-lint">—</div></div>
+      <div class="res-item"><div class="rl">Saved vs Flat Rate</div><div class="rv c-acc" id="r-saved">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📉 Principal vs Interest Over Tenure</div>
+      <div class="chart-wrap"><canvas id="r-chart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 3 · COMPARE
+══════════════════════════════════════════ -->
+<div id="tab-compare" class="tab-panel">
+  <div class="card">
+    <div class="card-title">⚖️ Common Loan Parameters</div>
+
+    <div class="toggle-row">
+      <label class="toggle"><input type="checkbox" id="c-dp-toggle" onchange="toggleDP('c'); syncCompare()"><span class="toggle-slider"></span></label>
+      <span class="toggle-label">Include Down Payment in Comparison</span>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>💵 Asset Price (₹)</label>
+        <input type="number" id="c-price" value="1000000" oninput="autoDP('c'); syncCompare()"/>
+      </div>
+      <div class="field" id="c-dp-field" style="display:none">
+        <label>⬇️ Down Payment (₹)</label>
+        <input type="number" id="c-dp-amt" value="200000" oninput="onDPAmtChange('c'); syncCompare()"/>
+      </div>
+      <div class="field" id="c-dp-pct-field" style="display:none">
+        <label>% of Price</label>
+        <div class="slider-wrap">
+          <input type="range" id="c-dp-pct-s" min="0" max="90" step="1" value="20" oninput="onDPPctChange('c'); syncCompare()">
+          <span class="sv" id="c-dp-pct-disp">20%</span>
+        </div>
+        <input type="number" id="c-dp-pct" value="20" min="0" max="100" oninput="onDPPctInput('c'); syncCompare()"/>
+      </div>
+      <div class="field">
+        <label>🏦 Loan Amount (₹)</label>
+        <input type="number" id="c-amount" value="1000000" oninput="syncCompare()"/>
+      </div>
+      <div class="field">
+        <label>📈 Annual Rate (%)</label>
+        <input type="number" id="c-rate" value="12" step="0.1" oninput="syncCompare()"/>
+      </div>
+      <div class="field">
+        <label>📅 Tenure (Months)</label>
+        <input type="number" id="c-tenure" value="60" oninput="syncCompare()"/>
+      </div>
+    </div>
+
+    <div id="c-dp-summary" style="display:none" class="dp-section mt-3">
+      <div class="dp-header">
+        <span>⬇️ Down Payment</span>
+        <div class="dp-pills">
+          <button class="dp-pill" onclick="setDPPct('c',5)">5%</button>
+          <button class="dp-pill" onclick="setDPPct('c',10)">10%</button>
+          <button class="dp-pill" onclick="setDPPct('c',20)">20%</button>
+          <button class="dp-pill" onclick="setDPPct('c',25)">25%</button>
+          <button class="dp-pill" onclick="setDPPct('c',30)">30%</button>
+          <button class="dp-pill" onclick="setDPPct('c',50)">50%</button>
+        </div>
+      </div>
+      <div class="dp-summary">
+        <div class="dp-stat"><div class="dl">Asset Price</div><div class="dv" id="c-s-price">—</div></div>
+        <div class="dp-stat"><div class="dl">Down Payment</div><div class="dv" id="c-s-dp">—</div></div>
+        <div class="dp-stat"><div class="dl">Loan Amount</div><div class="dv" id="c-s-loan">—</div></div>
+        <div class="dp-stat"><div class="dl">LTV Ratio</div><div class="dv" id="c-s-ltv">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="c-results" class="hidden">
+    <div id="c-dp-res-bar" class="dp-result-bar hidden">
+      <div class="dpb-item"><div class="dl">Asset Price</div><div class="dv" id="c-r-price">—</div></div>
+      <div class="dpb-item"><div class="dl">Down Payment</div><div class="dv" id="c-r-dp">—</div></div>
+      <div class="dpb-item"><div class="dl">Loan Amount</div><div class="dv" id="c-r-loan">—</div></div>
+      <div class="dpb-item"><div class="dl">LTV Ratio</div><div class="dv" id="c-r-ltv">—</div></div>
+    </div>
+
+    <div class="cmp-grid">
+      <div class="cmp-card flat">
+        <h3>📊 Flat Rate Loan</h3>
+        <div class="cmp-row"><span class="cl">Monthly EMI</span><span class="cv" id="cf-emi">—</span></div>
+        <div class="cmp-row"><span class="cl">Total Interest</span><span class="cv" id="cf-int" style="color:var(--danger)">—</span></div>
+        <div class="cmp-row"><span class="cl">Total Payment (loan)</span><span class="cv" id="cf-pay">—</span></div>
+        <div class="cmp-row" id="cf-total-cost-row" style="display:none"><span class="cl">Grand Total (DP+Loan)</span><span class="cv c-dp" id="cf-grand">—</span></div>
+        <div class="cmp-row"><span class="cl">Effective APR</span><span class="cv" id="cf-apr">—</span></div>
+        <div class="cmp-row"><span class="cl">Interest %</span><span class="cv" id="cf-rat">—</span></div>
+      </div>
+      <div class="cmp-card red">
+        <h3>📉 Reducing Balance</h3>
+        <div class="cmp-row"><span class="cl">Monthly EMI</span><span class="cv" id="cr-emi">—</span></div>
+        <div class="cmp-row"><span class="cl">Total Interest</span><span class="cv" id="cr-int" style="color:var(--danger)">—</span></div>
+        <div class="cmp-row"><span class="cl">Total Payment (loan)</span><span class="cv" id="cr-pay">—</span></div>
+        <div class="cmp-row" id="cr-total-cost-row" style="display:none"><span class="cl">Grand Total (DP+Loan)</span><span class="cv c-dp" id="cr-grand">—</span></div>
+        <div class="cmp-row"><span class="cl">Effective APR</span><span class="cv" id="cr-apr">—</span></div>
+        <div class="cmp-row"><span class="cl">Interest %</span><span class="cv" id="cr-rat">—</span></div>
+      </div>
+    </div>
+
+    <div class="save-banner mt-3">
+      <div class="icon">💡</div>
+      <div><h4 id="sv-title">—</h4><p id="sv-desc">—</p></div>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card-title">📊 Visual Comparison</div>
+      <div class="chart-wrap"><canvas id="c-chart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 4 · AMORTIZATION SCHEDULE
+══════════════════════════════════════════ -->
+<div id="tab-amort" class="tab-panel">
+  <div class="card">
+    <div class="card-title">📋 Amortization Schedule Generator</div>
+
+    <div class="toggle-row">
+      <label class="toggle"><input type="checkbox" id="a-dp-toggle" onchange="toggleDP('a')"><span class="toggle-slider"></span></label>
+      <span class="toggle-label">Include Down Payment</span>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>💵 Asset Price (₹)</label>
+        <input type="number" id="a-price" value="1000000" oninput="autoDP('a')"/>
+      </div>
+      <div class="field" id="a-dp-field" style="display:none">
+        <label>⬇️ Down Payment (₹)</label>
+        <input type="number" id="a-dp-amt" value="200000" oninput="onDPAmtChange('a')"/>
+      </div>
+      <div class="field" id="a-dp-pct-field" style="display:none">
+        <label>% of Price</label>
+        <div class="slider-wrap">
+          <input type="range" id="a-dp-pct-s" min="0" max="90" step="1" value="20" oninput="onDPPctChange('a')">
+          <span class="sv" id="a-dp-pct-disp">20%</span>
+        </div>
+        <input type="number" id="a-dp-pct" value="20" min="0" max="100" oninput="onDPPctInput('a')"/>
+      </div>
+      <div class="field">
+        <label>🏦 Loan Amount (₹)</label>
+        <input type="number" id="a-amount" value="1000000"/>
+      </div>
+      <div class="field">
+        <label>📈 Annual Rate (%)</label>
+        <input type="number" id="a-rate" value="12" step="0.1"/>
+      </div>
+      <div class="field">
+        <label>📅 Tenure (Months)</label>
+        <input type="number" id="a-tenure" value="60"/>
+      </div>
+      <div class="field">
+        <label>Loan Type</label>
+        <select id="a-type">
+          <option value="reducing">Reducing Balance</option>
+          <option value="flat">Flat Rate</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="generateSchedule()">Generate Schedule</button>
+      <button class="btn btn-outline" onclick="exportCSV()">⬇️ Export CSV</button>
+    </div>
+  </div>
+
+  <div id="a-results" class="hidden">
+    <div id="a-dp-res-bar" class="dp-result-bar hidden">
+      <div class="dpb-item"><div class="dl">Asset Price</div><div class="dv" id="a-r-price">—</div></div>
+      <div class="dpb-item"><div class="dl">Down Payment</div><div class="dv" id="a-r-dp">—</div></div>
+      <div class="dpb-item"><div class="dl">Loan Amount</div><div class="dv" id="a-r-loan">—</div></div>
+      <div class="dpb-item"><div class="dl">Grand Total</div><div class="dv" id="a-r-grand">—</div></div>
+    </div>
+    <div class="res-grid" id="a-summary"></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Opening Balance</th>
+            <th>EMI</th>
+            <th>Principal</th>
+            <th>Interest</th>
+            <th>Closing Balance</th>
+          </tr>
+        </thead>
+        <tbody id="a-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 5 · GUIDE
+══════════════════════════════════════════ -->
+<div id="tab-guide" class="tab-panel">
+  <div class="card">
+    <div class="card-title">⬇️ Down Payment — What & Why</div>
+    <div style="font-size:.86rem;color:var(--muted);line-height:1.9">
+      <p>A <strong style="color:var(--text)">down payment</strong> is the portion of the asset's total price you pay upfront — the rest is financed via a loan.</p>
+      <p style="margin-top:8px"><strong style="color:var(--dp)">Benefits of a larger down payment:</strong></p>
+      <ul style="margin-left:16px;margin-top:4px">
+        <li>Lower loan amount → lower EMI</li>
+        <li>Less total interest paid over the tenure</li>
+        <li>Better LTV ratio → often qualifies for lower interest rates</li>
+        <li>Faster loan approval in many cases</li>
+      </ul>
+      <p style="margin-top:10px"><strong style="color:var(--text)">LTV (Loan-to-Value) Ratio</strong> = Loan Amount ÷ Asset Price × 100. Lenders prefer LTV ≤ 80%. Home loans typically require 10–20% down payment.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📊 Flat Rate Formula</div>
+    <p style="color:var(--muted);font-size:.86rem;margin-bottom:12px">Interest always computed on the <strong style="color:var(--text)">original principal</strong>.</p>
+    <div style="background:var(--surface2);border-radius:8px;padding:14px;font-family:monospace;font-size:.83rem;color:var(--pl)">
+      Loan = Asset Price − Down Payment<br>
+      Monthly Interest = Loan × R / 12 / 100<br>
+      EMI = (Loan / N) + Monthly Interest<br>
+      Total Interest = Monthly Interest × N<br>
+      Total Cost = Down Payment + Loan + Total Interest
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📉 Reducing Balance Formula</div>
+    <p style="color:var(--muted);font-size:.86rem;margin-bottom:12px">Interest computed on the <strong style="color:var(--text)">outstanding balance</strong> — shrinks every month.</p>
+    <div style="background:var(--surface2);border-radius:8px;padding:14px;font-family:monospace;font-size:.83rem;color:var(--accent)">
+      Loan = Asset Price − Down Payment<br>
+      r = R / 12 / 100<br>
+      EMI = Loan × r × (1+r)^N / ((1+r)^N − 1)<br><br>
+      Each Month:<br>
+      Interest = Outstanding Balance × r<br>
+      Principal = EMI − Interest<br>
+      Total Cost = Down Payment + EMI × N
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">⚖️ Which Loan is Better?</div>
+    <div style="font-size:.86rem;color:var(--muted);line-height:1.9">
+      <p>✅ <strong style="color:var(--text)">Reducing Balance</strong> is almost always cheaper. Interest shrinks as you repay principal.</p>
+      <p style="margin-top:6px">⚠️ <strong style="color:var(--text)">Flat Rate</strong> looks cheaper on paper — but a 12% flat rate ≈ 21–22% reducing balance effective rate.</p>
+      <p style="margin-top:6px">💡 Always compare <strong style="color:var(--text)">Effective APR</strong>, not the advertised rate.</p>
+      <p style="margin-top:6px">🏠 Home &amp; auto loans → reducing balance. Some personal loans / NBFCs → flat rate.</p>
+      <p style="margin-top:6px">💰 A larger down payment reduces both EMI and total interest regardless of loan type.</p>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+/* ══════════════════════════════════
+   HELPERS
+══════════════════════════════════ */
+const fmt  = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const fmtD = (n,d=2) => '₹' + (+n).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct  = n => (+n).toFixed(2) + '%';
+const $    = id => document.getElementById(id);
+let fChart=null, rChart=null, cChart=null;
+const kill = c => { if(c) c.destroy(); return null; };
+
+/* ══════════════════════════════════
+   TAB SWITCH
+══════════════════════════════════ */
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  $('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='compare') syncCompare();
+}
+
+/* ══════════════════════════════════
+   DOWN PAYMENT LOGIC
+══════════════════════════════════ */
+function toggleDP(pfx) {
+  const on = $(pfx+'-dp-toggle').checked;
+  $( pfx+'-dp-field').style.display      = on ? '' : 'none';
+  $(pfx+'-dp-pct-field').style.display   = on ? '' : 'none';
+  $(pfx+'-dp-summary').style.display     = on ? '' : 'none';
+  if(on) autoDP(pfx);
+}
+
+// When asset price changes — recalculate DP amount from stored %
+function autoDP(pfx) {
+  const on = $(pfx+'-dp-toggle').checked;
+  if(!on) return;
+  const price = +$(pfx+'-price').value || 0;
+  const pctV  = +$(pfx+'-dp-pct').value || 0;
+  const dpAmt = price * pctV / 100;
+  $(pfx+'-dp-amt').value = Math.round(dpAmt);
+  updateLoan(pfx);
+  updateDPStats(pfx);
+}
+
+// When DP amount typed
+function onDPAmtChange(pfx) {
+  const price = +$(pfx+'-price').value || 1;
+  const amt   = +$(pfx+'-dp-amt').value || 0;
+  const p     = Math.min(100, (amt/price*100));
+  $(pfx+'-dp-pct').value = p.toFixed(1);
+  $(pfx+'-dp-pct-s').value = p.toFixed(1);
+  $(pfx+'-dp-pct-disp').textContent = p.toFixed(1)+'%';
+  updateLoan(pfx);
+  updateDPStats(pfx);
+}
+
+// When slider changes
+function onDPPctChange(pfx) {
+  const v = $(pfx+'-dp-pct-s').value;
+  $(pfx+'-dp-pct').value = v;
+  $(pfx+'-dp-pct-disp').textContent = v+'%';
+  const price = +$(pfx+'-price').value || 0;
+  $(pfx+'-dp-amt').value = Math.round(price * v / 100);
+  updateLoan(pfx);
+  updateDPStats(pfx);
+}
+
+// When pct input typed
+function onDPPctInput(pfx) {
+  const v = $(pfx+'-dp-pct').value;
+  $(pfx+'-dp-pct-s').value = v;
+  $(pfx+'-dp-pct-disp').textContent = v+'%';
+  const price = +$(pfx+'-price').value || 0;
+  $(pfx+'-dp-amt').value = Math.round(price * v / 100);
+  updateLoan(pfx);
+  updateDPStats(pfx);
+}
+
+// Quick preset pills
+function setDPPct(pfx, p) {
+  $(pfx+'-dp-pct').value = p;
+  $(pfx+'-dp-pct-s').value = p;
+  $(pfx+'-dp-pct-disp').textContent = p+'%';
+  const price = +$(pfx+'-price').value || 0;
+  $(pfx+'-dp-amt').value = Math.round(price * p / 100);
+  updateLoan(pfx);
+  updateDPStats(pfx);
+  // Trigger recalc
+  const map = {f:'syncFlat',r:'syncReducing',c:'syncCompare',a:null};
+  if(map[pfx]) window[map[pfx]]();
+}
+
+function updateLoan(pfx) {
+  const price = +$(pfx+'-price').value || 0;
+  const dp    = +$(pfx+'-dp-amt').value || 0;
+  const loan  = Math.max(0, price - dp);
+  $(pfx+'-amount').value = loan;
+}
+
+function updateDPStats(pfx) {
+  const price = +$(pfx+'-price').value || 0;
+  const dp    = +$(pfx+'-dp-amt').value || 0;
+  const loan  = Math.max(0, price - dp);
+  const ltv   = price > 0 ? (loan/price*100) : 0;
+  $(pfx+'-s-price').textContent = fmt(price);
+  $(pfx+'-s-dp').textContent    = fmt(dp);
+  $(pfx+'-s-loan').textContent  = fmt(loan);
+  $(pfx+'-s-ltv').textContent   = ltv.toFixed(1)+'%';
+  $(pfx+'-ltv-bar').style.width = Math.min(100,ltv)+'%';
+  $(pfx+'-ltv-bar').style.background = ltv>90?'#f43f5e':ltv>80?'#f59e0b':'linear-gradient(90deg,#10b981,#f59e0b)';
+}
+
+function getDPInfo(pfx) {
+  const on    = $(pfx+'-dp-toggle').checked;
+  const price = +$(pfx+'-price').value || 0;
+  const dp    = on ? (+$(pfx+'-dp-amt').value || 0) : 0;
+  const loan  = on ? Math.max(0, price - dp) : (+$(pfx+'-amount').value || 0);
+  const ltv   = price > 0 ? (loan/price*100) : 0;
+  return { on, price, dp, loan, ltv };
+}
+
+function showDPResultBar(pfx, info, totalLoanPay) {
+  const bar = $(pfx+'-dp-res-bar');
+  if(!info.on) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  $(pfx+'-r-price').textContent = fmt(info.price);
+  $(pfx+'-r-dp').textContent    = fmt(info.dp);
+  $(pfx+'-r-loan').textContent  = fmt(info.loan);
+  $(pfx+'-r-ltv').textContent   = info.ltv.toFixed(1)+'%';
+  if($(pfx+'-r-total-cost')) $(pfx+'-r-total-cost').textContent = fmt(info.dp + totalLoanPay);
+}
+
+/* ══════════════════════════════════
+   FLAT RATE CALC
+══════════════════════════════════ */
+function flatCalc(P,R,N) {
+  const mi = P*R/100/12;
+  const emi = P/N + mi;
+  const ti  = mi*N;
+  return { emi, ti, tp:P+ti, mi, mp:P/N, apr: solveR(P,emi,N)*12*100 };
+}
+
+function syncFlat() {
+  const info = getDPInfo('f');
+  const P = info.loan;
+  const R = +$('f-rate').value;
+  const N = +$('f-ten').value;
+  if(!P||!R||!N) return;
+  const f = flatCalc(P,R,N);
+
+  $('f-emi').textContent   = fmtD(f.emi);
+  $('f-tint').textContent  = fmtD(f.ti);
+  $('f-tpay').textContent  = fmtD(f.tp);
+  $('f-apr').textContent   = pct(f.apr);
+  $('f-mint').textContent  = fmtD(f.mi);
+  $('f-mprin').textContent = fmtD(f.mp);
+
+  $('f-results').classList.remove('hidden');
+  showDPResultBar('f', info, f.tp);
+
+  // Pie chart: show DP slice if enabled
+  fChart = kill(fChart);
+  const labels = info.on ? ['Down Payment','Principal','Total Interest'] : ['Principal','Total Interest'];
+  const data   = info.on ? [info.dp, P, f.ti] : [P, f.ti];
+  const colors = info.on ? ['#f59e0b','#6366f1','#f43f5e'] : ['#6366f1','#f43f5e'];
+  $('f-legend').innerHTML = labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${colors[i]}"></div>${l}</div>`).join('');
+  fChart = new Chart($('f-chart'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+}
+
+/* ══════════════════════════════════
+   REDUCING BALANCE CALC
+══════════════════════════════════ */
+function reducingCalc(P,R,N) {
+  const r   = R/100/12;
+  const emi = r===0 ? P/N : P*r*Math.pow(1+r,N)/(Math.pow(1+r,N)-1);
+  let bal=P, ti=0, sched=[];
+  for(let i=1;i<=N;i++){
+    const ip=bal*r, pp=emi-ip; ti+=ip; bal-=pp;
+    sched.push({month:i,interest:ip,principal:pp,balance:Math.max(0,bal)});
+  }
+  return {emi,ti,tp:emi*N,sched,fi:sched[0].interest,li:sched[N-1].interest};
+}
+
+function syncReducing() {
+  const info = getDPInfo('r');
+  const P = info.loan;
+  const R = +$('r-rate').value;
+  const N = +$('r-ten').value;
+  if(!P||!R||!N) return;
+  const rv = reducingCalc(P,R,N);
+  const ff = flatCalc(P,R,N);
+
+  $('r-emi').textContent   = fmtD(rv.emi);
+  $('r-tint').textContent  = fmtD(rv.ti);
+  $('r-tpay').textContent  = fmtD(rv.tp);
+  $('r-fint').textContent  = fmtD(rv.fi);
+  $('r-lint').textContent  = fmtD(rv.li);
+  $('r-saved').textContent = fmtD(ff.ti - rv.ti);
+
+  $('r-results').classList.remove('hidden');
+  showDPResultBar('r', info, rv.tp);
+
+  rChart = kill(rChart);
+  const step = Math.max(1,Math.floor(N/20));
+  const pts  = rv.sched.filter((_,i)=>i%step===0||i===N-1);
+  rChart = new Chart($('r-chart'),{type:'bar',data:{labels:pts.map(s=>'M'+s.month),datasets:[{label:'Principal',data:pts.map(s=>s.principal.toFixed(2)),backgroundColor:'#6366f1',borderRadius:2},{label:'Interest',data:pts.map(s=>s.interest.toFixed(2)),backgroundColor:'#f43f5e',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8'}}},scales:{x:{stacked:true,ticks:{color:'#64748b'},grid:{color:'#1e293b'}},y:{stacked:true,ticks:{color:'#64748b',callback:v=>'₹'+Number(v).toLocaleString('en-IN')},grid:{color:'#334155'}}}}});
+}
+
+/* ══════════════════════════════════
+   COMPARISON
+══════════════════════════════════ */
+function syncCompare() {
+  const info = getDPInfo('c');
+  const P = info.loan;
+  const R = +$('c-rate').value;
+  const N = +$('c-tenure').value;
+  if(!P||!R||!N) return;
+
+  const ff = flatCalc(P,R,N);
+  const rr = reducingCalc(P,R,N);
+  const rApr = solveR(P,rr.emi,N)*12*100;
+
+  $('cf-emi').textContent = fmtD(ff.emi);
+  $('cf-int').textContent = fmtD(ff.ti);
+  $('cf-pay').textContent = fmtD(ff.tp);
+  $('cf-apr').textContent = pct(ff.apr);
+  $('cf-rat').textContent = pct(ff.ti/ff.tp*100);
+
+  $('cr-emi').textContent = fmtD(rr.emi);
+  $('cr-int').textContent = fmtD(rr.ti);
+  $('cr-pay').textContent = fmtD(rr.tp);
+  $('cr-apr').textContent = pct(rApr);
+  $('cr-rat').textContent = pct(rr.ti/rr.tp*100);
+
+  // Grand total rows with DP
+  if(info.on) {
+    $('cf-total-cost-row').style.display = '';
+    $('cr-total-cost-row').style.display = '';
+    $('cf-grand').textContent = fmtD(info.dp + ff.tp);
+    $('cr-grand').textContent = fmtD(info.dp + rr.tp);
+  } else {
+    $('cf-total-cost-row').style.display = 'none';
+    $('cr-total-cost-row').style.display = 'none';
+  }
+
+  // DP bar
+  if(info.on) {
+    $('c-dp-res-bar').classList.remove('hidden');
+    $('c-r-price').textContent = fmt(info.price);
+    $('c-r-dp').textContent    = fmt(info.dp);
+    $('c-r-loan').textContent  = fmt(info.loan);
+    $('c-r-ltv').textContent   = info.ltv.toFixed(1)+'%';
+    updateDPStats('c');
+  } else {
+    $('c-dp-res-bar').classList.add('hidden');
+  }
+
+  const saved = ff.ti - rr.ti;
+  $('sv-title').textContent = `Save ${fmtD(saved)} by choosing Reducing Balance`;
+  $('sv-desc').textContent  = `At ${R}% for ${N} months — Flat APR: ${pct(ff.apr)} vs Reducing APR: ${pct(rApr)}. Reducing balance charges only ${pct(rr.ti/ff.ti*100)} of flat rate interest.${info.on ? ` Grand total with DP: Flat ${fmtD(info.dp+ff.tp)} vs Reducing ${fmtD(info.dp+rr.tp)}.` : ''}`;
+
+  $('c-results').classList.remove('hidden');
+
+  cChart = kill(cChart);
+  const barLabels = info.on
+    ? ['Down Payment','Monthly EMI','Total Interest','Total Payment','Grand Total']
+    : ['Monthly EMI','Total Interest','Total Payment'];
+  const flatData = info.on
+    ? [info.dp, ff.emi.toFixed(0), ff.ti.toFixed(0), ff.tp.toFixed(0), (info.dp+ff.tp).toFixed(0)]
+    : [ff.emi.toFixed(0), ff.ti.toFixed(0), ff.tp.toFixed(0)];
+  const redData  = info.on
+    ? [info.dp, rr.emi.toFixed(0), rr.ti.toFixed(0), rr.tp.toFixed(0), (info.dp+rr.tp).toFixed(0)]
+    : [rr.emi.toFixed(0), rr.ti.toFixed(0), rr.tp.toFixed(0)];
+
+  cChart = new Chart($('c-chart'),{type:'bar',data:{labels:barLabels,datasets:[{label:'Flat Rate',data:flatData,backgroundColor:'rgba(99,102,241,.8)',borderRadius:6},{label:'Reducing Balance',data:redData,backgroundColor:'rgba(16,185,129,.8)',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8'}}},scales:{x:{ticks:{color:'#64748b'},grid:{color:'#1e293b'}},y:{ticks:{color:'#64748b',callback:v=>'₹'+Number(v).toLocaleString('en-IN')},grid:{color:'#334155'}}}}});
+}
+
+/* ══════════════════════════════════
+   AMORTIZATION SCHEDULE
+══════════════════════════════════ */
+let schedData = [];
+
+function generateSchedule() {
+  const info = getDPInfo('a');
+  const P    = +$('a-amount').value;
+  const R    = +$('a-rate').value;
+  const N    = +$('a-tenure').value;
+  const type = $('a-type').value;
+  if(!P||!R||!N) return;
+
+  let rows=[], emi, ti, tp;
+
+  if(type==='reducing') {
+    const rv=reducingCalc(P,R,N); emi=rv.emi; ti=rv.ti; tp=rv.tp;
+    let ob=P;
+    rows = rv.sched.map(s=>{const open=ob; ob=Math.max(0,ob-s.principal); return {...s,open,emi};});
+  } else {
+    const ff=flatCalc(P,R,N); emi=ff.emi; ti=ff.ti; tp=ff.tp;
+    let ob=P;
+    for(let i=1;i<=N;i++){
+      const open=ob; ob=Math.max(0,ob-ff.mp);
+      rows.push({month:i,open,emi,principal:ff.mp,interest:ff.mi,balance:ob});
+    }
+  }
+  schedData = rows;
+
+  // DP result bar
+  if(info.on) {
+    $('a-dp-res-bar').classList.remove('hidden');
+    $('a-r-price').textContent = fmt(info.price);
+    $('a-r-dp').textContent    = fmt(info.dp);
+    $('a-r-loan').textContent  = fmt(info.loan);
+    $('a-r-grand').textContent = fmtD(info.dp + tp);
+  } else {
+    $('a-dp-res-bar').classList.add('hidden');
+  }
+
+  $('a-summary').innerHTML =
+    `<div class="res-item"><div class="rl">Monthly EMI</div><div class="rv c-pri">${fmtD(emi)}</div></div>
+     <div class="res-item"><div class="rl">Total Interest</div><div class="rv c-dan">${fmtD(ti)}</div></div>
+     <div class="res-item"><div class="rl">Total Loan Payment</div><div class="rv c-warn">${fmtD(tp)}</div></div>
+     ${info.on ? `<div class="res-item"><div class="rl">Down Payment</div><div class="rv c-dp">${fmtD(info.dp)}</div></div><div class="res-item"><div class="rl">Grand Total</div><div class="rv c-dp">${fmtD(info.dp+tp)}</div></div>` : ''}`;
+
+  $('a-tbody').innerHTML = rows.map((r,i)=>
+    `<tr ${i%12===11?'class="yr-row"':''}>
+      <td>${r.month}</td>
+      <td>${fmtD(r.open)}</td>
+      <td>${fmtD(r.emi)}</td>
+      <td class="td-p">${fmtD(r.principal)}</td>
+      <td class="td-i">${fmtD(r.interest)}</td>
+      <td class="td-b">${fmtD(r.balance)}</td>
+    </tr>`
+  ).join('') +
+  `<tr class="tot-row">
+    <td colspan="2"><strong>TOTAL</strong></td>
+    <td><strong>${fmtD(emi*N)}</strong></td>
+    <td class="td-p"><strong>${fmtD(P)}</strong></td>
+    <td class="td-i"><strong>${fmtD(ti)}</strong></td>
+    <td>—</td>
+  </tr>`;
+
+  $('a-results').classList.remove('hidden');
+}
+
+function exportCSV() {
+  if(!schedData.length) return;
+  const info = getDPInfo('a');
+  let csv = info.on
+    ? `Asset Price,${(+$('a-price').value).toFixed(2)}\nDown Payment,${info.dp.toFixed(2)}\nLoan Amount,${info.loan.toFixed(2)}\n\n`
+    : '';
+  csv += 'Month,Opening Balance,EMI,Principal,Interest,Closing Balance\n';
+  csv += schedData.map(r=>`${r.month},${(r.open||0).toFixed(2)},${r.emi.toFixed(2)},${r.principal.toFixed(2)},${r.interest.toFixed(2)},${r.balance.toFixed(2)}`).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`loan-schedule-${$('a-type').value}-${Date.now()}.csv`;
+  a.click();
+}
+
+/* ══════════════════════════════════
+   EFFECTIVE RATE SOLVER
+══════════════════════════════════ */
+function solveR(P, emi, N) {
+  let r=0.01;
+  for(let i=0;i<120;i++){
+    const pow=Math.pow(1+r,N);
+    const f=P*r*pow/(pow-1)-emi;
+    const df=P*(pow*(1+r*N-r)-1)/Math.pow(pow-1,2);
+    const r2=r-f/df;
+    if(Math.abs(r2-r)<1e-10) return r2;
+    r=r2; if(r<=0) r=0.0001;
+  }
+  return r;
+}
+
+/* ══════════════════════════════════
+   PWA INSTALL
+══════════════════════════════════ */
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredPrompt=e;
+  $('inst-banner').classList.add('show');
+});
+$('inst-btn').addEventListener('click', async()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  $('inst-banner').classList.remove('show');
+});
+if('serviceWorker' in navigator)
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+/* ══════════════════════════════════
+   INIT
+══════════════════════════════════ */
+syncFlat();
+syncReducing();
+syncCompare();
+</script>
+</body>
+</html>
